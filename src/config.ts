@@ -3,12 +3,20 @@
  * All environment variables and settings are validated and exported from here
  * 
  * NEVER access process.env directly in other files - always use this module
+ * 
+ * DEMO MODE: Set DEMO_MODE=true to bypass M365 requirements
+ * In demo mode, only Azure OpenAI and DevOps credentials are required.
  */
 
 import * as dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
+
+/**
+ * Check if running in demo mode (bypasses M365 requirements)
+ */
+export const isDemo = process.env.DEMO_MODE === "true";
 
 /**
  * Environment variable validation
@@ -29,28 +37,39 @@ function optionalEnv(name: string, defaultValue: string): string {
 }
 
 /**
+ * In demo mode, use placeholder values for M365 configs
+ */
+function requireEnvOrDemo(name: string, demoDefault: string): string {
+  if (isDemo) {
+    return process.env[name] || demoDefault;
+  }
+  return requireEnv(name);
+}
+
+/**
  * Azure AD / Entra ID Configuration
+ * In demo mode, these can be placeholders
  */
 export const azureAd = {
-  tenantId: requireEnv("AZURE_TENANT_ID"),
-  clientId: requireEnv("AZURE_CLIENT_ID"),
-  clientSecret: requireEnv("AZURE_CLIENT_SECRET"),
+  tenantId: requireEnvOrDemo("AZURE_TENANT_ID", "demo-tenant-id"),
+  clientId: requireEnvOrDemo("AZURE_CLIENT_ID", "demo-client-id"),
+  clientSecret: requireEnvOrDemo("AZURE_CLIENT_SECRET", "demo-secret"),
 } as const;
 
 /**
- * Azure OpenAI Configuration
+ * Azure OpenAI Configuration (Always Required)
  */
 export const azureOpenAI = {
   endpoint: requireEnv("AZURE_OPENAI_ENDPOINT"),
   apiKey: requireEnv("AZURE_OPENAI_KEY"),
   deployment: optionalEnv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
-  apiVersion: optionalEnv("AZURE_OPENAI_API_VERSION", "2024-05-01-preview"),
+  apiVersion: optionalEnv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
   maxTokens: parseInt(optionalEnv("AZURE_OPENAI_MAX_TOKENS", "4000"), 10),
   temperature: parseFloat(optionalEnv("AZURE_OPENAI_TEMPERATURE", "0.3")),
 } as const;
 
 /**
- * Azure DevOps Configuration
+ * Azure DevOps Configuration (Always Required)
  */
 export const azureDevOps = {
   orgUrl: requireEnv("AZURE_DEVOPS_ORG_URL"),
@@ -64,10 +83,11 @@ export const azureDevOps = {
 
 /**
  * Bot Framework Configuration
+ * In demo mode, these can be placeholders
  */
 export const bot = {
-  id: requireEnv("BOT_ID"),
-  password: requireEnv("BOT_PASSWORD"),
+  id: requireEnvOrDemo("BOT_ID", "demo-bot-id"),
+  password: requireEnvOrDemo("BOT_PASSWORD", "demo-bot-password"),
   type: optionalEnv("BOT_TYPE", "MultiTenant") as "MultiTenant" | "SingleTenant",
 } as const;
 
@@ -88,6 +108,7 @@ export const features = {
   enableRetries: optionalEnv("ENABLE_RETRIES", "true") === "true",
   maxRetries: parseInt(optionalEnv("MAX_RETRIES", "3"), 10),
   retryDelayMs: parseInt(optionalEnv("RETRY_DELAY_MS", "1000"), 10),
+  demoMode: isDemo,
 } as const;
 
 /**
@@ -109,11 +130,16 @@ export const priorityMap: Record<string, number> = {
 export function validateConfig(): void {
   console.log("🔧 Validating configuration...");
   
+  if (isDemo) {
+    console.log("🎭 DEMO MODE ENABLED - M365 credentials not required");
+  }
+  
   // Force evaluation of all required configs
   const configs = [azureAd, azureOpenAI, azureDevOps, bot, server];
   
   console.log(`✅ Configuration validated successfully`);
   console.log(`   Environment: ${server.environment}`);
+  console.log(`   Demo Mode: ${isDemo}`);
   console.log(`   Azure DevOps Project: ${azureDevOps.project}`);
   console.log(`   OpenAI Deployment: ${azureOpenAI.deployment}`);
 }
@@ -129,6 +155,7 @@ export const config = {
   server,
   features,
   priorityMap,
+  isDemo,
 } as const;
 
 export default config;

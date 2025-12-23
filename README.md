@@ -1,18 +1,36 @@
-# ActionAgent 🤖
+# 🤖 ActionAgent
 
-> **Transform meeting conversations into actionable work items—automatically.**
+> **AI-powered Teams bot that transforms meeting conversations into Azure DevOps work items**
 
-ActionAgent is a Microsoft Teams bot that parses meeting transcripts after a call ends, extracts actionable technical tasks using Azure OpenAI (GPT-4), and creates work items in Azure DevOps automatically. Built on the "One Microsoft" stack for seamless enterprise integration.
+[![Build Status](https://github.com/JackAmichai/ActionAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/JackAmichai/ActionAgent/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🎯 The Problem It Solves
+---
 
-| Pain Point | ActionAgent Solution |
-|------------|---------------------|
-| ⏰ Hours spent manually reviewing meeting recordings | AI extracts action items in seconds |
-| 📝 Action items lost or forgotten after meetings | Automatic work item creation in Azure DevOps |
-| 🔄 Manual copy-paste from notes to ticket systems | Direct Graph API → OpenAI → DevOps pipeline |
-| 👥 Unclear task ownership after discussions | Intelligent assignee resolution via Azure AD |
-| 📊 No visibility into meeting-to-work conversion | Built-in telemetry and metrics |
+## 💡 The Problem
+
+Engineers agree to tasks during meetings but forget to log them:
+
+> *"Sarah, can you fix that login bug?"*  
+> *"Mike, update the API docs by Friday"*  
+> *"We need unit tests for the payment module"*
+
+These commitments vanish into thin air. **ActionAgent captures them automatically.**
+
+---
+
+## ✨ The Solution
+
+ActionAgent listens to your Teams meetings and:
+
+1. **📝 Captures** - Fetches the meeting transcript via Microsoft Graph
+2. **🧠 Analyzes** - Uses GPT-4o to extract technical tasks with owners and priorities
+3. **📋 Creates** - Automatically generates work items in Azure DevOps
+4. **💬 Reports** - Posts a summary card back to the Teams chat
+
+**Result**: Zero tasks slip through the cracks.
+
+---
 
 ## 🏗️ Architecture
 
@@ -30,244 +48,217 @@ ActionAgent is a Microsoft Teams bot that parses meeting transcripts after a cal
             └──────────────┘     └──────────────┘
 ```
 
-### Data Flow
-
-1. **User triggers** ActionAgent in Teams (`@ActionAgent process <meeting-id>`)
-2. **Graph API** retrieves meeting transcript (VTT format)
-3. **Azure OpenAI** extracts structured action items with assignees & priorities
-4. **Identity Service** resolves assignee names to Azure AD users
-5. **DevOps API** creates Bug/Task/User Story work items
-6. **Adaptive Card** displays results with links back to user
-
-## ✨ Features
-
-- 🎙️ **Transcript Processing** - Parses VTT transcripts with speaker attribution
-- 🧠 **AI Extraction** - GPT-4o identifies action items, assignees, priorities, and deadlines
-- 📋 **Work Item Creation** - Creates Bugs, Tasks, or User Stories in Azure DevOps
-- 👤 **Identity Resolution** - Maps spoken names to Azure AD users
-- 🔄 **Retry Logic** - Exponential backoff for API resilience
-- 📊 **Telemetry** - Structured logging and metrics for observability
-- 🏥 **Health Endpoints** - `/health`, `/ready`, `/live`, `/metrics` for monitoring
-- 🎨 **Adaptive Cards** - Rich Teams UI with actionable buttons
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🎭 Demo Mode (No M365 Required!)
 
-- Node.js 18+
-- Azure subscription with:
-  - Azure AD app registration
-  - Azure OpenAI resource (GPT-4o deployment)
-  - Azure Bot Service
-- Azure DevOps organization with PAT token
-- Microsoft 365 tenant with Teams
+Test the full AI + DevOps pipeline **without** a Microsoft 365 subscription:
 
-### Installation
-
-```powershell
-# Clone the repository
+```bash
+# 1. Clone the repo
 git clone https://github.com/JackAmichai/ActionAgent.git
 cd ActionAgent
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Copy environment template
-Copy-Item .env.sample .env
+# 3. Create .env file (only OpenAI + DevOps required for demo)
+cp .env.sample .env
 
-# Edit .env with your credentials
-notepad .env
+# 4. Edit .env with your credentials:
+#    - AZURE_OPENAI_ENDPOINT
+#    - AZURE_OPENAI_KEY
+#    - AZURE_DEVOPS_ORG_URL
+#    - AZURE_DEVOPS_PAT
+#    - AZURE_DEVOPS_PROJECT
 
-# Build the project
-npm run build
-
-# Start the bot
-npm start
+# 5. Run the interactive demo
+npm run demo
 ```
 
-### Environment Variables
+The demo uses a mock meeting transcript and shows:
+- ✅ GPT-4o extracting action items with assignees & priorities
+- ✅ Work items being created in Azure DevOps
+- ✅ Full pipeline working end-to-end
 
-Create a `.env` file with the following:
+---
 
-```env
-# Azure AD / Entra ID
-AZURE_TENANT_ID=your-tenant-id
-AZURE_CLIENT_ID=your-client-id
-AZURE_CLIENT_SECRET=your-client-secret
+## 📋 Prerequisites
 
-# Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your-api-key
+| Component | Demo Mode | Full Mode | How to Get |
+|-----------|:---------:|:---------:|------------|
+| Node.js 18+ | ✅ | ✅ | [nodejs.org](https://nodejs.org) |
+| Azure OpenAI | ✅ | ✅ | [Azure Portal](https://portal.azure.com) |
+| Azure DevOps | ✅ | ✅ | [dev.azure.com](https://dev.azure.com) |
+| Microsoft 365 | ❌ | ✅ | [Business Basic Trial](https://www.microsoft.com/microsoft-365/business/microsoft-365-business-basic) |
+| Azure AD App | ❌ | ✅ | Azure Portal |
+
+---
+
+## 🔧 Environment Variables
+
+Create a `.env` file:
+
+```bash
+# Demo Mode - bypass M365 requirements
+DEMO_MODE=true
+
+# Azure OpenAI (REQUIRED)
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_KEY=your-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4o
 
-# Azure DevOps
+# Azure DevOps (REQUIRED)
 AZURE_DEVOPS_ORG_URL=https://dev.azure.com/your-org
-AZURE_DEVOPS_PROJECT=YourProject
 AZURE_DEVOPS_PAT=your-personal-access-token
+AZURE_DEVOPS_PROJECT=Engineering
 
-# Bot Framework
-BOT_ID=your-bot-id
-BOT_PASSWORD=your-bot-password
+# Azure AD (Required for Full Mode only)
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-secret
 
-# Server (optional)
-PORT=3978
+# Bot Framework (Required for Full Mode only)
+BOT_ID=your-client-id
+BOT_PASSWORD=your-secret
 ```
 
-## 📱 Teams Commands
+---
 
-| Command | Description |
-|---------|-------------|
-| `@ActionAgent process <meeting-id>` | Process transcript and create work items |
-| `@ActionAgent list` | List recent meetings with transcripts |
-| `@ActionAgent health` | Show bot health status |
-| `@ActionAgent help` | Display available commands |
+## 🎯 Commands
 
-## 🔐 Required Permissions
-
-### Microsoft Graph API (Application)
-
-| Permission | Purpose |
-|------------|---------|
-| `OnlineMeetings.Read.All` | Read meeting metadata |
-| `OnlineMeetingTranscript.Read.All` | Access meeting transcripts |
-| `User.Read.All` | Resolve user identities |
-
-> ⚠️ **Important**: These permissions require **admin consent** in your Azure AD tenant.
-
-### Azure DevOps PAT Scopes
-
-- `Work Items (Read & Write)`
-- `Project and Team (Read)`
-
-## 🧪 Development
-
-```powershell
-# Run in development mode (with hot reload)
-npm run dev
-
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
-
-# Build for production
-npm run build
+### Demo Mode
+```bash
+npm run demo    # Interactive demo with mock transcript
 ```
 
-### Project Structure
+### Full Mode (requires M365)
+```bash
+npm start       # Start the Teams bot
+npm run dev     # Development mode with ts-node
+```
+
+### Development
+```bash
+npm test              # Run tests
+npm run test:coverage # Run tests with coverage
+npm run build         # Compile TypeScript
+npm run lint          # Lint code
+```
+
+---
+
+## 📖 How to Get Azure Resources
+
+### 1. Azure OpenAI
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Create an **Azure OpenAI** resource
+3. Deploy the **gpt-4o** model
+4. Copy the **Endpoint** and **Key**
+
+### 2. Azure DevOps
+
+1. Go to [dev.azure.com](https://dev.azure.com)
+2. Create an organization and project
+3. Go to **User Settings** → **Personal Access Tokens**
+4. Create a PAT with **Work Items: Read & Write** scope
+
+### 3. Microsoft 365 (Full Mode Only)
+
+**Option A:** [M365 Developer Program](https://developer.microsoft.com/microsoft-365/dev-program) (free, but limited availability)
+
+**Option B:** [M365 Business Basic Trial](https://www.microsoft.com/microsoft-365/business/microsoft-365-business-basic) (free 30 days)
+
+---
+
+## 📁 Project Structure
 
 ```
 src/
-├── index.ts              # Entry point with health endpoints
-├── config.ts             # Centralized configuration
+├── index.ts              # Entry point, REST server
+├── config.ts             # Centralized configuration (supports demo mode)
 ├── teamsBot.ts           # Bot command handling
+├── demo.ts               # Interactive demo script
 ├── services/
-│   ├── graphService.ts   # Microsoft Graph API client
+│   ├── graphService.ts   # Microsoft Graph API
 │   ├── aiService.ts      # Azure OpenAI integration
-│   ├── devopsService.ts  # Azure DevOps API client
-│   └── identityService.ts # Azure AD user resolution
+│   ├── devopsService.ts  # Azure DevOps API
+│   └── identityService.ts# User identity resolution
 ├── utils/
-│   ├── errorHandling.ts  # Retry logic & error types
-│   └── telemetry.ts      # Logging & metrics
+│   ├── errorHandling.ts  # Retry logic, error types
+│   └── telemetry.ts      # Logging and metrics
 ├── models/
 │   └── actionItem.ts     # Type definitions
 └── cards/
     └── summaryCard.ts    # Adaptive Card templates
 
 tests/
-├── setup.ts              # Test environment setup
-├── services/             # Service unit tests
-├── utils/                # Utility tests
-└── cards/                # Card tests
-
-appPackage/
-└── manifest.json         # Teams app manifest
+├── setup.ts              # Test environment
+├── fixtures/
+│   └── mock_transcript.vtt # Sample meeting transcript
+├── utils/
+│   └── utils.test.ts     # Utility tests
+└── cards/
+    └── cards.test.ts     # Card tests
 ```
-
-## 🚢 Deployment
-
-### Azure Web App
-
-```powershell
-# Build the app
-npm run build
-
-# Deploy using Azure CLI
-az webapp up --name actionagent-bot --resource-group your-rg --runtime "NODE:18-lts"
-```
-
-### Docker
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY dist/ ./dist/
-EXPOSE 3978
-CMD ["node", "dist/index.js"]
-```
-
-### Teams App Installation
-
-1. Build the Teams package: `npm run package`
-2. Upload `appPackage/actionagent.zip` to Teams Admin Center
-3. Or sideload for development in Teams
-
-## 📊 Monitoring
-
-### Health Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health` | Overall health status |
-| `GET /ready` | Readiness probe (K8s) |
-| `GET /live` | Liveness probe (K8s) |
-| `GET /metrics` | Prometheus-style metrics |
-
-### Example Health Response
-
-```json
-{
-  "status": "healthy",
-  "uptime": 3600,
-  "version": "1.0.0",
-  "metrics": {
-    "transcriptsProcessed": 42,
-    "actionItemsCreated": 156,
-    "workItemsCreated": 156,
-    "averageProcessingTime": 4500
-  }
-}
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Bot Framework SDK](https://github.com/microsoft/botframework-sdk)
-- Powered by [Azure OpenAI Service](https://azure.microsoft.com/en-us/products/ai-services/openai-service)
-- Uses [Adaptive Cards](https://adaptivecards.io/) for rich Teams UI
 
 ---
 
-**Made with ❤️ by the ActionAgent team**
+## 🧪 Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Watch mode
+npm run test:watch
+```
+
+**77 tests** covering:
+- Error handling & retry logic
+- Telemetry service
+- Adaptive Card generation
+
+---
+
+## 🔒 Security
+
+- All secrets via environment variables
+- Client Credentials flow for Graph API
+- PAT for Azure DevOps (recommend Service Principal for production)
+- No PII logged
+- Correlation IDs for tracing
+
+---
+
+## 🛣️ Roadmap
+
+- [ ] `callEnded` webhook for automatic triggering
+- [ ] Azure Key Vault integration
+- [ ] User disambiguation dialog
+- [ ] Managed Identity support
+- [ ] Application Insights telemetry
+
+---
+
+## 📜 License
+
+MIT © Jack Amichai
+
+---
+
+## 🙏 Acknowledgments
+
+Built with the **"One Microsoft"** stack:
+- Microsoft Teams + Bot Framework
+- Microsoft Graph API
+- Azure OpenAI (GPT-4o)
+- Azure DevOps
 
 *Turn meetings into momentum.*
