@@ -1,0 +1,78 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "{{BOT_ID}}",
+  "packageName": "com.actionagent.bot",
+  "developer": {
+    "name": "ActionAgent",
+    "websiteUrl": "https://github.com/JackAmichai/ActionAgent",
+    "privacyUrl": "https://github.com/JackAmichai/ActionAgent/blob/main/PRIVACY.md",
+    "termsOfUseUrl": "https://github.com/JackAmichai/ActionAgent/blob/main/TERMS.md"
+  },
+  "name": {
+    "short": "ActionAgent",
+    "full": "ActionAgent - AI Meeting Action Item Tracker"
+  },
+  "description": {
+    "short": "Automatically extract action items from Teams meetings and create Azure DevOps work items",
+    "full": "ActionAgent is an intelligent Microsoft Teams bot that uses Azure OpenAI to analyze meeting transcripts, extract technical action items, and automatically create work items in Azure DevOps. Never lose track of meeting commitments again!"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0078D4",
+  "bots": [
+    {
+      "botId": "{{BOT_ID}}",
+      "scopes": [
+        "personal",
+        "team",
+        "groupchat"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal",
+            "team",
+            "groupchat"
+          ],
+          "commands": [
+            {
+              "title": "process meeting",
+              "description": "Analyze a meeting transcript and create work items"
+            },
+            {
+              "title": "list meetings",
+              "description": "Show recent meetings to choose from"
+            },
+            {
+              "title": "health",
+              "description": "Check service connectivity status"
+            },
+            {
+              "title": "help",
+              "description": "Show available commands and tips"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "*.botframework.com",
+    "*.azurewebsites.net",
+    "token.botframework.com"
+  ],
+  "webApplicationInfo": {
+    "id": "{{BOT_ID}}",
+    "resource": "api://{{BOT_DOMAIN}}/{{BOT_ID}}"
+  }
+}
