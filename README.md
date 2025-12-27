@@ -1,4 +1,4 @@
-# 🤖 ActionAgent
+#  ActionAgent
 
 > **AI-powered Teams bot that transforms meeting conversations into Azure DevOps work items**
 
