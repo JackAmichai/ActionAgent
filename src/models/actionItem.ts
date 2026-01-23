@@ -4,8 +4,8 @@
 export interface ActionItem {
   title: string;
   assignedTo: string;
-  type: "Task" | "Bug" | "User Story";
-  priority: "High" | "Medium" | "Low";
+  type: 'Task' | 'Bug' | 'User Story';
+  priority: 'High' | 'Medium' | 'Low';
   description?: string;
   deadline?: string;
 }
@@ -16,6 +16,7 @@ export interface ActionItem {
 export interface ActionItemsResponse {
   actionItems: ActionItem[];
   summary?: string;
+  sentiment?: 'Positive' | 'Neutral' | 'Negative';
 }
 
 /**
@@ -26,6 +27,7 @@ export interface WorkItemResult {
   url: string;
   title: string;
   type: string;
+  priority: 'High' | 'Medium' | 'Low';
 }
 
 /**

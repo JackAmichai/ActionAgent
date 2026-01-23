@@ -1,7 +1,7 @@
 /**
  * Azure DevOps Service
  * Handles work item creation in Azure DevOps
- * 
+ *
  * Features:
  * - Configurable project, area, and iteration paths
  * - Identity resolution integration
@@ -9,20 +9,20 @@
  * - Comprehensive error handling
  */
 
-import * as azdev from "azure-devops-node-api";
-import { config, priorityMap } from "../config";
-import { ActionItem, WorkItemResult } from "../models/actionItem";
-import { resolveUser, getDevOpsIdentity, ResolutionResult } from "./identityService";
+import * as azdev from 'azure-devops-node-api';
+import { config, priorityMap } from '../config';
+import { ActionItem, WorkItemResult } from '../models/actionItem';
+import { resolveUser, getDevOpsIdentity, ResolutionResult } from './identityService';
 import {
   createCorrelationContext,
   withErrorHandling,
   ActionAgentError,
-} from "../utils/errorHandling";
-import { telemetry } from "../utils/telemetry";
+} from '../utils/errorHandling';
+import { telemetry } from '../utils/telemetry';
 
 // Type for patch document operations
 interface PatchOperation {
-  op: "add" | "remove" | "replace" | "move" | "copy" | "test";
+  op: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
   path: string;
   value?: unknown;
   from?: string;
@@ -54,31 +54,31 @@ export async function createWorkItem(
   task: ActionItem,
   resolveIdentities: boolean = true
 ): Promise<ExtendedWorkItemResult> {
-  const context = createCorrelationContext("DevOps.CreateWorkItem", {
+  const context = createCorrelationContext('DevOps.CreateWorkItem', {
     title: task.title,
     type: task.type,
   });
 
   return withErrorHandling(
     async () => {
-      const timer = telemetry.startTimer("DevOps.CreateWorkItem");
+      const timer = telemetry.startTimer('DevOps.CreateWorkItem');
 
       // Resolve identity if enabled
       let assigneeResolution: ResolutionResult | undefined;
       let assigneeIdentity = task.assignedTo;
 
-      if (resolveIdentities && task.assignedTo && task.assignedTo !== "Unassigned") {
+      if (resolveIdentities && task.assignedTo && task.assignedTo !== 'Unassigned') {
         try {
           assigneeResolution = await resolveUser(task.assignedTo);
           if (assigneeResolution.resolved) {
             assigneeIdentity = getDevOpsIdentity(assigneeResolution);
-            telemetry.debug("Resolved assignee identity", {
+            telemetry.debug('Resolved assignee identity', {
               original: task.assignedTo,
               resolved: assigneeIdentity,
             });
           }
         } catch (error) {
-          telemetry.warn("Failed to resolve identity, using original name", {
+          telemetry.warn('Failed to resolve identity, using original name', {
             name: task.assignedTo,
             error: String(error),
           });
@@ -105,17 +105,14 @@ export async function createWorkItem(
       timer.stop();
 
       if (!workItem || !workItem.id) {
-        throw new ActionAgentError(
-          "Failed to create work item - no ID returned",
-          context
-        );
+        throw new ActionAgentError('Failed to create work item - no ID returned', context);
       }
 
       telemetry.info(`Created work item #${workItem.id}`, {
         title: task.title,
         type: workItemType,
       });
-      telemetry.trackSuccess("DevOps.CreateWorkItem", { type: workItemType });
+      telemetry.trackSuccess('DevOps.CreateWorkItem', { type: workItemType });
 
       return {
         id: workItem.id,
@@ -124,6 +121,7 @@ export async function createWorkItem(
           `${config.azureDevOps.orgUrl}/${config.azureDevOps.project}/_workitems/edit/${workItem.id}`,
         title: task.title,
         type: workItemType,
+        priority: task.priority,
         assigneeResolution,
         correlationId: context.correlationId,
       };
@@ -143,39 +141,39 @@ function buildPatchDocument(
 ): PatchOperation[] {
   const patchDocument: PatchOperation[] = [
     {
-      op: "add",
-      path: "/fields/System.Title",
+      op: 'add',
+      path: '/fields/System.Title',
       value: task.title,
     },
     {
-      op: "add",
-      path: "/fields/System.Description",
+      op: 'add',
+      path: '/fields/System.Description',
       value: formatDescription(task, correlationId),
     },
     {
-      op: "add",
-      path: "/fields/Microsoft.VSTS.Common.Priority",
+      op: 'add',
+      path: '/fields/Microsoft.VSTS.Common.Priority',
       value: priorityMap[task.priority] || 2,
     },
     {
-      op: "add",
-      path: "/fields/System.Tags",
-      value: "ActionAgent; AI-Generated",
+      op: 'add',
+      path: '/fields/System.Tags',
+      value: 'ActionAgent; AI-Generated',
     },
   ];
 
   // Add assigned to if specified and not "Unassigned"
-  if (assigneeIdentity && assigneeIdentity !== "Unassigned") {
+  if (assigneeIdentity && assigneeIdentity !== 'Unassigned') {
     patchDocument.push({
-      op: "add",
-      path: "/fields/System.AssignedTo",
+      op: 'add',
+      path: '/fields/System.AssignedTo',
       value: assigneeIdentity,
     });
   } else if (config.azureDevOps.triageUser) {
     // Assign to triage user if no assignee
     patchDocument.push({
-      op: "add",
-      path: "/fields/System.AssignedTo",
+      op: 'add',
+      path: '/fields/System.AssignedTo',
       value: config.azureDevOps.triageUser,
     });
   }
@@ -183,8 +181,8 @@ function buildPatchDocument(
   // Add area path if configured
   if (config.azureDevOps.defaultAreaPath) {
     patchDocument.push({
-      op: "add",
-      path: "/fields/System.AreaPath",
+      op: 'add',
+      path: '/fields/System.AreaPath',
       value: config.azureDevOps.defaultAreaPath,
     });
   }
@@ -192,8 +190,8 @@ function buildPatchDocument(
   // Add iteration path if configured
   if (config.azureDevOps.defaultIterationPath) {
     patchDocument.push({
-      op: "add",
-      path: "/fields/System.IterationPath",
+      op: 'add',
+      path: '/fields/System.IterationPath',
       value: config.azureDevOps.defaultIterationPath,
     });
   }
@@ -203,8 +201,8 @@ function buildPatchDocument(
     const parsedDate = parseDeadline(task.deadline);
     if (parsedDate) {
       patchDocument.push({
-        op: "add",
-        path: "/fields/Microsoft.VSTS.Scheduling.TargetDate",
+        op: 'add',
+        path: '/fields/Microsoft.VSTS.Scheduling.TargetDate',
         value: parsedDate.toISOString(),
       });
     }
@@ -221,26 +219,26 @@ function parseDeadline(deadline: string): Date | null {
   const now = new Date();
 
   // Handle relative deadlines
-  if (lower.includes("eod") || lower.includes("end of day") || lower.includes("today")) {
+  if (lower.includes('eod') || lower.includes('end of day') || lower.includes('today')) {
     const eod = new Date(now);
     eod.setHours(23, 59, 59, 999);
     return eod;
   }
 
-  if (lower.includes("tomorrow")) {
+  if (lower.includes('tomorrow')) {
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(17, 0, 0, 0);
     return tomorrow;
   }
 
-  if (lower.includes("next week")) {
+  if (lower.includes('next week')) {
     const nextWeek = new Date(now);
     nextWeek.setDate(nextWeek.getDate() + 7);
     return nextWeek;
   }
 
-  if (lower.includes("end of sprint") || lower.includes("sprint end")) {
+  if (lower.includes('end of sprint') || lower.includes('sprint end')) {
     // Assume 2-week sprints ending on Friday
     const endOfSprint = new Date(now);
     const daysUntilFriday = (5 - endOfSprint.getDay() + 7) % 7 || 7;
@@ -267,11 +265,11 @@ export async function createWorkItems(
   tasks: ActionItem[],
   resolveIdentities: boolean = true
 ): Promise<ExtendedWorkItemResult[]> {
-  const context = createCorrelationContext("DevOps.BatchCreate", {
+  const context = createCorrelationContext('DevOps.BatchCreate', {
     count: tasks.length,
   });
 
-  telemetry.info("Creating work items in batch", { count: tasks.length });
+  telemetry.info('Creating work items in batch', { count: tasks.length });
 
   const results: ExtendedWorkItemResult[] = [];
   const errors: Array<{ task: ActionItem; error: Error }> = [];
@@ -285,23 +283,17 @@ export async function createWorkItems(
 
     for (let j = 0; j < batchResults.length; j++) {
       const result = batchResults[j];
-      if (result.status === "fulfilled") {
+      if (result.status === 'fulfilled') {
         results.push(result.value);
       } else {
         errors.push({ task: batch[j], error: result.reason });
-        telemetry.error(
-          "Failed to create work item",
-          result.reason,
-          { title: batch[j].title }
-        );
+        telemetry.error('Failed to create work item', result.reason, { title: batch[j].title });
       }
     }
 
     // Delay between batches
     if (i + MAX_CONCURRENT < tasks.length) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS)
-      );
+      await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
     }
   }
 
@@ -320,13 +312,13 @@ export async function createWorkItems(
  * Maps ActionItem type to Azure DevOps work item type
  * Adjust these mappings based on your process template (Agile, Scrum, Basic)
  */
-function mapWorkItemType(type: ActionItem["type"]): string {
+function mapWorkItemType(type: ActionItem['type']): string {
   switch (type) {
-    case "Bug":
-      return "Bug";
-    case "User Story":
-      return "User Story"; // Use "Product Backlog Item" for Scrum template
-    case "Task":
+    case 'Bug':
+      return 'Bug';
+    case 'User Story':
+      return 'User Story'; // Use "Product Backlog Item" for Scrum template
+    case 'Task':
     default:
       return config.azureDevOps.defaultWorkItemType;
   }
@@ -363,11 +355,11 @@ function formatDescription(task: ActionItem, correlationId: string): string {
  */
 function escapeHtml(text: string): string {
   return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
@@ -388,7 +380,7 @@ export async function validateConnection(): Promise<boolean> {
     const projects = await coreApi.getProjects();
     return projects.length > 0;
   } catch (error) {
-    telemetry.error("Azure DevOps connection validation failed", error as Error);
+    telemetry.error('Azure DevOps connection validation failed', error as Error);
     return false;
   }
 }
@@ -400,9 +392,9 @@ export async function getWorkItemTypes(): Promise<string[]> {
   try {
     const workItemTracking = await connection.getWorkItemTrackingApi();
     const types = await workItemTracking.getWorkItemTypes(config.azureDevOps.project);
-    return types.map((t) => t.name || "").filter(Boolean);
+    return types.map((t) => t.name || '').filter(Boolean);
   } catch (error) {
-    telemetry.error("Failed to get work item types", error as Error);
+    telemetry.error('Failed to get work item types', error as Error);
     return [];
   }
 }

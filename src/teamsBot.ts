@@ -290,7 +290,8 @@ export class ActionAgentBot extends TeamsActivityHandler {
                 [],
                 meetingDetails.subject,
                 actionItemsResponse.summary || "No technical action items were identified in this meeting.",
-                correlationContext.correlationId
+                correlationContext.correlationId,
+                actionItemsResponse.sentiment
               )
             ),
           ],
@@ -325,7 +326,8 @@ export class ActionAgentBot extends TeamsActivityHandler {
               workItems,
               meetingDetails.subject,
               actionItemsResponse.summary,
-              correlationContext.correlationId
+              correlationContext.correlationId,
+              actionItemsResponse.sentiment
             )
           ),
         ],

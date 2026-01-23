@@ -19,6 +19,7 @@ describe('Adaptive Card Templates', () => {
         url: 'https://dev.azure.com/org/project/_workitems/edit/123',
         title: 'Fix login bug',
         type: 'Bug',
+        priority: 'High',
         correlationId: 'test-correlation-123',
         assigneeResolution: {
           originalName: 'John Smith',
@@ -37,6 +38,7 @@ describe('Adaptive Card Templates', () => {
         url: 'https://dev.azure.com/org/project/_workitems/edit/124',
         title: 'Update documentation',
         type: 'Task',
+        priority: 'Medium',
         correlationId: 'test-correlation-123',
         assigneeResolution: {
           originalName: 'Jane Doe',
