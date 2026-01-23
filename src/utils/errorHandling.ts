@@ -3,8 +3,8 @@
  * Provides retry logic, correlation IDs, and standardized error handling
  */
 
-import { v4 as uuidv4 } from "uuid";
-import { config } from "../config";
+import { v4 as uuidv4 } from 'uuid';
+import { config } from '../config';
 
 /**
  * Correlation context for tracing requests across services
@@ -40,11 +40,11 @@ export function logOperationComplete(
   additionalInfo?: Record<string, unknown>
 ): void {
   const duration = Date.now() - context.startTime;
-  const status = success ? "✅ SUCCESS" : "❌ FAILED";
-  
+  const status = success ? '✅ SUCCESS' : '❌ FAILED';
+
   console.log(
     `[${context.correlationId}] ${status} ${context.operationName} (${duration}ms)`,
-    additionalInfo ? JSON.stringify(additionalInfo) : ""
+    additionalInfo ? JSON.stringify(additionalInfo) : ''
   );
 }
 
@@ -67,7 +67,7 @@ export class ActionAgentError extends Error {
     } = {}
   ) {
     super(message);
-    this.name = "ActionAgentError";
+    this.name = 'ActionAgentError';
     this.correlationId = context.correlationId;
     this.operationName = context.operationName;
     this.isRetryable = options.isRetryable ?? false;
@@ -104,10 +104,7 @@ const defaultRetryConfig: RetryConfig = {
 /**
  * Calculate exponential backoff delay with jitter
  */
-function calculateBackoffDelay(
-  attempt: number,
-  config: RetryConfig
-): number {
+function calculateBackoffDelay(attempt: number, config: RetryConfig): number {
   const exponentialDelay = config.baseDelayMs * Math.pow(2, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, config.maxDelayMs);
   const jitter = cappedDelay * config.jitterFactor * (Math.random() - 0.5);
@@ -128,26 +125,26 @@ function isRetryableError(error: unknown): boolean {
   if (error instanceof ActionAgentError) {
     return error.isRetryable;
   }
-  
+
   // HTTP status codes that are retryable
   const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
-  
+
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-    
+
     // Check for common transient error patterns
     if (
-      message.includes("timeout") ||
-      message.includes("econnreset") ||
-      message.includes("econnrefused") ||
-      message.includes("rate limit") ||
-      message.includes("too many requests") ||
-      message.includes("service unavailable") ||
-      message.includes("gateway timeout")
+      message.includes('timeout') ||
+      message.includes('econnreset') ||
+      message.includes('econnrefused') ||
+      message.includes('rate limit') ||
+      message.includes('too many requests') ||
+      message.includes('service unavailable') ||
+      message.includes('gateway timeout')
     ) {
       return true;
     }
-    
+
     // Check for status code in error
     const statusMatch = message.match(/status[:\s]+(\d{3})/i);
     if (statusMatch) {
@@ -155,7 +152,7 @@ function isRetryableError(error: unknown): boolean {
       return retryableStatusCodes.includes(status);
     }
   }
-  
+
   return false;
 }
 
@@ -168,7 +165,7 @@ export async function withRetry<T>(
   retryConfig: Partial<RetryConfig> = {}
 ): Promise<T> {
   const cfg = { ...defaultRetryConfig, ...retryConfig };
-  
+
   if (!config.features.enableRetries) {
     return operation();
   }
@@ -178,24 +175,24 @@ export async function withRetry<T>(
   for (let attempt = 1; attempt <= cfg.maxAttempts; attempt++) {
     try {
       const result = await operation();
-      
+
       if (attempt > 1) {
         console.log(
           `[${context.correlationId}] ${context.operationName} succeeded on attempt ${attempt}`
         );
       }
-      
+
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       const shouldRetry = attempt < cfg.maxAttempts && isRetryableError(error);
-      
+
       if (shouldRetry) {
         const delay = calculateBackoffDelay(attempt, cfg);
         console.warn(
           `[${context.correlationId}] ${context.operationName} failed (attempt ${attempt}/${cfg.maxAttempts}), ` +
-          `retrying in ${delay}ms: ${lastError.message}`
+            `retrying in ${delay}ms: ${lastError.message}`
         );
         await sleep(delay);
       } else {
@@ -207,11 +204,10 @@ export async function withRetry<T>(
     }
   }
 
-  throw new ActionAgentError(
-    lastError?.message || "Operation failed after retries",
-    context,
-    { isRetryable: false, cause: lastError }
-  );
+  throw new ActionAgentError(lastError?.message || 'Operation failed after retries', context, {
+    isRetryable: false,
+    cause: lastError,
+  });
 }
 
 /**
@@ -229,35 +225,30 @@ export async function withErrorHandling<T>(
     const result = options.enableRetry
       ? await withRetry(operation, context, options.retryConfig)
       : await operation();
-    
+
     logOperationComplete(context, true);
     return result;
   } catch (error) {
     logOperationComplete(context, false, { error: String(error) });
-    
+
     if (error instanceof ActionAgentError) {
       throw error;
     }
-    
-    throw new ActionAgentError(
-      error instanceof Error ? error.message : String(error),
-      context,
-      { cause: error instanceof Error ? error : undefined }
-    );
+
+    throw new ActionAgentError(error instanceof Error ? error.message : String(error), context, {
+      cause: error instanceof Error ? error : undefined,
+    });
   }
 }
 
 /**
  * Safe JSON parse with fallback
  */
-export function safeJsonParse<T>(
-  jsonString: string,
-  fallback: T
-): T {
+export function safeJsonParse<T>(jsonString: string, fallback: T): T {
   try {
     return JSON.parse(jsonString) as T;
   } catch {
-    console.warn("Failed to parse JSON, using fallback");
+    console.warn('Failed to parse JSON, using fallback');
     return fallback;
   }
 }

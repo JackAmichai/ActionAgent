@@ -3,12 +3,12 @@
  * Maps names extracted by AI to actual Azure AD users
  */
 
-import { Client } from "@microsoft/microsoft-graph-client";
-import { ClientSecretCredential } from "@azure/identity";
-import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials";
-import { config } from "../config";
-import { telemetry } from "../utils/telemetry";
-import "isomorphic-fetch";
+import { Client } from '@microsoft/microsoft-graph-client';
+import { ClientSecretCredential } from '@azure/identity';
+import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials';
+import { config } from '../config';
+import { telemetry } from '../utils/telemetry';
+import 'isomorphic-fetch';
 
 // Initialize credentials
 const credential = new ClientSecretCredential(
@@ -18,7 +18,7 @@ const credential = new ClientSecretCredential(
 );
 
 const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-  scopes: ["https://graph.microsoft.com/.default"],
+  scopes: ['https://graph.microsoft.com/.default'],
 });
 
 const graphClient = Client.initWithMiddleware({ authProvider });
@@ -31,7 +31,7 @@ export interface ResolvedUser {
   userPrincipalName: string;
   mail: string | null;
   id: string;
-  confidence: "high" | "medium" | "low";
+  confidence: 'high' | 'medium' | 'low';
 }
 
 /**
@@ -70,20 +70,20 @@ function cleanCache(): void {
  */
 async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
   const cacheKey = name.toLowerCase();
-  
+
   // Check cache first
   cleanCache();
   if (userCache.has(cacheKey)) {
-    telemetry.debug("User cache hit", { name });
+    telemetry.debug('User cache hit', { name });
     return userCache.get(cacheKey)!;
   }
 
   try {
     // Search using filter - exact match first
     const exactResult = await graphClient
-      .api("/users")
+      .api('/users')
       .filter(`displayName eq '${escapeODataValue(name)}'`)
-      .select("id,displayName,userPrincipalName,mail")
+      .select('id,displayName,userPrincipalName,mail')
       .top(5)
       .get();
 
@@ -92,15 +92,15 @@ async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
       userPrincipalName: u.userPrincipalName as string,
       mail: u.mail as string | null,
       id: u.id as string,
-      confidence: "high" as const,
+      confidence: 'high' as const,
     }));
 
     // If no exact match, try startswith
     if (users.length === 0) {
       const partialResult = await graphClient
-        .api("/users")
+        .api('/users')
         .filter(`startswith(displayName, '${escapeODataValue(name)}')`)
-        .select("id,displayName,userPrincipalName,mail")
+        .select('id,displayName,userPrincipalName,mail')
         .top(5)
         .get();
 
@@ -109,7 +109,7 @@ async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
         userPrincipalName: u.userPrincipalName as string,
         mail: u.mail as string | null,
         id: u.id as string,
-        confidence: "medium" as const,
+        confidence: 'medium' as const,
       }));
     }
 
@@ -117,10 +117,10 @@ async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
     if (users.length === 0) {
       try {
         const searchResult = await graphClient
-          .api("/users")
-          .header("ConsistencyLevel", "eventual")
+          .api('/users')
+          .header('ConsistencyLevel', 'eventual')
           .search(`"displayName:${escapeODataValue(name)}"`)
-          .select("id,displayName,userPrincipalName,mail")
+          .select('id,displayName,userPrincipalName,mail')
           .top(5)
           .get();
 
@@ -129,11 +129,11 @@ async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
           userPrincipalName: u.userPrincipalName as string,
           mail: u.mail as string | null,
           id: u.id as string,
-          confidence: "low" as const,
+          confidence: 'low' as const,
         }));
       } catch {
         // Search might not be available, continue with empty results
-        telemetry.debug("User search not available, skipping", { name });
+        telemetry.debug('User search not available, skipping', { name });
       }
     }
 
@@ -143,7 +143,7 @@ async function searchUsersByName(name: string): Promise<ResolvedUser[]> {
 
     return users;
   } catch (error) {
-    telemetry.error("Failed to search users", error as Error, { name });
+    telemetry.error('Failed to search users', error as Error, { name });
     return [];
   }
 }
@@ -159,14 +159,14 @@ function escapeODataValue(value: string): string {
  * Resolve a single name to an Azure AD user
  */
 export async function resolveUser(name: string): Promise<ResolutionResult> {
-  if (!name || name.toLowerCase() === "unassigned") {
+  if (!name || name.toLowerCase() === 'unassigned') {
     return {
       originalName: name,
       resolved: false,
     };
   }
 
-  const timer = telemetry.startTimer("identity.resolve");
+  const timer = telemetry.startTimer('identity.resolve');
 
   try {
     const users = await searchUsersByName(name);
@@ -176,13 +176,13 @@ export async function resolveUser(name: string): Promise<ResolutionResult> {
       return {
         originalName: name,
         resolved: false,
-        error: "No matching users found",
+        error: 'No matching users found',
       };
     }
 
     if (users.length === 1) {
       timer.stop();
-      telemetry.trackSuccess("identity.resolve", { confidence: users[0].confidence });
+      telemetry.trackSuccess('identity.resolve', { confidence: users[0].confidence });
       return {
         originalName: name,
         resolved: true,
@@ -192,11 +192,11 @@ export async function resolveUser(name: string): Promise<ResolutionResult> {
 
     // Multiple matches - return best match with alternatives
     timer.stop();
-    telemetry.trackSuccess("identity.resolve", { 
+    telemetry.trackSuccess('identity.resolve', {
       confidence: users[0].confidence,
-      alternatives: String(users.length - 1) 
+      alternatives: String(users.length - 1),
     });
-    
+
     return {
       originalName: name,
       resolved: true,
@@ -205,11 +205,11 @@ export async function resolveUser(name: string): Promise<ResolutionResult> {
     };
   } catch (error) {
     timer.stop();
-    telemetry.trackFailure("identity.resolve", "GraphError");
+    telemetry.trackFailure('identity.resolve', 'GraphError');
     return {
       originalName: name,
       resolved: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
@@ -217,18 +217,16 @@ export async function resolveUser(name: string): Promise<ResolutionResult> {
 /**
  * Resolve multiple names in batch
  */
-export async function resolveUsers(
-  names: string[]
-): Promise<Map<string, ResolutionResult>> {
+export async function resolveUsers(names: string[]): Promise<Map<string, ResolutionResult>> {
   const results = new Map<string, ResolutionResult>();
-  const uniqueNames = [...new Set(names.filter((n) => n && n !== "Unassigned"))];
+  const uniqueNames = [...new Set(names.filter((n) => n && n !== 'Unassigned'))];
 
   // Resolve in parallel with concurrency limit
   const BATCH_SIZE = 5;
   for (let i = 0; i < uniqueNames.length; i += BATCH_SIZE) {
     const batch = uniqueNames.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(batch.map(resolveUser));
-    
+
     for (let j = 0; j < batch.length; j++) {
       results.set(batch[j], batchResults[j]);
     }
@@ -257,7 +255,7 @@ export function formatResolutionForCard(resolution: ResolutionResult): string {
   }
 
   const user = resolution.user!;
-  const icon = user.confidence === "high" ? "✅" : user.confidence === "medium" ? "🔶" : "⚪";
-  
+  const icon = user.confidence === 'high' ? '✅' : user.confidence === 'medium' ? '🔶' : '⚪';
+
   return `${icon} ${user.displayName}`;
 }

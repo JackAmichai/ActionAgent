@@ -24,9 +24,9 @@ These commitments vanish into thin air. **ActionAgent captures them automaticall
 ActionAgent listens to your Teams meetings and:
 
 1. **📝 Captures** - Fetches the meeting transcript via Microsoft Graph
-2. **🧠 Analyzes** - Uses GPT-4o to extract technical tasks with owners and priorities
-3. **📋 Creates** - Automatically generates work items in Azure DevOps
-4. **💬 Reports** - Posts a summary card back to the Teams chat
+2. **🧠 Analyzes** - Uses GPT-4o to extract technical tasks, **assignees**, **priority**, and **sentiment**.
+3. **📋 Creates** - Automatically generates work items (Tasks, Bugs, User Stories) in Azure DevOps.
+4. **💬 Reports** - Posts a summary card back to the Teams chat with links and status.
 
 **Result**: Zero tasks slip through the cracks.
 
@@ -34,54 +34,50 @@ ActionAgent listens to your Teams meetings and:
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Microsoft      │────▶│   ActionAgent    │────▶│  Azure DevOps   │
-│  Teams          │     │   Bot Service    │     │  Work Items     │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │
-                    ┌──────────┴──────────┐
-                    ▼                     ▼
-            ┌──────────────┐     ┌──────────────┐
-            │ MS Graph API │     │ Azure OpenAI │
-            │ (Transcripts)│     │ (GPT-4o)     │
-            └──────────────┘     └──────────────┘
+```mermaid
+graph TD
+    User[User in Teams] -->|Commands| Bot[ActionAgent Bot]
+    Bot -->|Fetch Transcript| Graph[Microsoft Graph API]
+    Bot -->|Extract Tasks| AI[Azure OpenAI GPT-4o]
+    Bot -->|Create Items| ADO[Azure DevOps]
+
+    subgraph "ActionAgent Service"
+        Bot
+        Adapter[Bot Adapter]
+        Services[Services Layer]
+    end
+
+    Services --> Graph
+    Services --> AI
+    Services --> ADO
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Deployment Options
 
-### 🎭 Demo Mode (No M365 Required!)
+### Option 1: Vercel (Serverless)
 
-Test the full AI + DevOps pipeline **without** a Microsoft 365 subscription:
+ActionAgent is optimized for Vercel Serverless Functions.
+
+1.  **Fork** this repository.
+2.  **Import** into Vercel.
+3.  **Configure Environment Variables** (see below).
+4.  **Deploy**. Vercel will automatically detect the configuration.
+
+### Option 2: Docker
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/JackAmichai/ActionAgent.git
-cd ActionAgent
+# Build the container
+docker build -t action-agent .
 
-# 2. Install dependencies
-npm install
-
-# 3. Create .env file (only OpenAI + DevOps required for demo)
-cp .env.sample .env
-
-# 4. Edit .env with your credentials:
-#    - AZURE_OPENAI_ENDPOINT
-#    - AZURE_OPENAI_KEY
-#    - AZURE_DEVOPS_ORG_URL
-#    - AZURE_DEVOPS_PAT
-#    - AZURE_DEVOPS_PROJECT
-
-# 5. Run the interactive demo
-npm run demo
+# Run the container
+docker run -p 3978:3978 --env-file .env action-agent
 ```
 
-The demo uses a mock meeting transcript and shows:
-- ✅ GPT-4o extracting action items with assignees & priorities
-- ✅ Work items being created in Azure DevOps
-- ✅ Full pipeline working end-to-end
+### Option 3: Azure App Service
+
+Standard Node.js deployment to Azure App Service is fully supported.
 
 ---
 
@@ -146,31 +142,8 @@ npm test              # Run tests
 npm run test:coverage # Run tests with coverage
 npm run build         # Compile TypeScript
 npm run lint          # Lint code
+npm run format        # Format code
 ```
-
----
-
-## 📖 How to Get Azure Resources
-
-### 1. Azure OpenAI
-
-1. Go to [Azure Portal](https://portal.azure.com)
-2. Create an **Azure OpenAI** resource
-3. Deploy the **gpt-4o** model
-4. Copy the **Endpoint** and **Key**
-
-### 2. Azure DevOps
-
-1. Go to [dev.azure.com](https://dev.azure.com)
-2. Create an organization and project
-3. Go to **User Settings** → **Personal Access Tokens**
-4. Create a PAT with **Work Items: Read & Write** scope
-
-### 3. Microsoft 365 (Full Mode Only)
-
-**Option A:** [M365 Developer Program](https://developer.microsoft.com/microsoft-365/dev-program) (free, but limited availability)
-
-**Option B:** [M365 Business Basic Trial](https://www.microsoft.com/microsoft-365/business/microsoft-365-business-basic) (free 30 days)
 
 ---
 
@@ -178,31 +151,26 @@ npm run lint          # Lint code
 
 ```
 src/
-├── index.ts              # Entry point, REST server
-├── config.ts             # Centralized configuration (supports demo mode)
+├── index.ts              # Entry point (Standalone Server)
+├── adapter.ts            # Shared Bot Adapter logic
+├── config.ts             # Centralized configuration
 ├── teamsBot.ts           # Bot command handling
 ├── demo.ts               # Interactive demo script
 ├── services/
 │   ├── graphService.ts   # Microsoft Graph API
-│   ├── aiService.ts      # Azure OpenAI integration
+│   ├── aiService.ts      # Azure OpenAI integration (Zod validated)
 │   ├── devopsService.ts  # Azure DevOps API
 │   └── identityService.ts# User identity resolution
 ├── utils/
 │   ├── errorHandling.ts  # Retry logic, error types
-│   └── telemetry.ts      # Logging and metrics
+│   └── telemetry.ts      # Structured logging and metrics
 ├── models/
 │   └── actionItem.ts     # Type definitions
 └── cards/
     └── summaryCard.ts    # Adaptive Card templates
 
-tests/
-├── setup.ts              # Test environment
-├── fixtures/
-│   └── mock_transcript.vtt # Sample meeting transcript
-├── utils/
-│   └── utils.test.ts     # Utility tests
-└── cards/
-    └── cards.test.ts     # Card tests
+api/
+└── messages.ts           # Vercel Serverless Entry Point
 ```
 
 ---
@@ -212,15 +180,9 @@ tests/
 ```bash
 # Run all tests
 npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Watch mode
-npm run test:watch
 ```
 
-**77 tests** covering:
+**77+ tests** covering:
 - Error handling & retry logic
 - Telemetry service
 - Adaptive Card generation
@@ -234,16 +196,7 @@ npm run test:watch
 - PAT for Azure DevOps (recommend Service Principal for production)
 - No PII logged
 - Correlation IDs for tracing
-
----
-
-## 🛣️ Roadmap
-
-- [ ] `callEnded` webhook for automatic triggering
-- [ ] Azure Key Vault integration
-- [ ] User disambiguation dialog
-- [ ] Managed Identity support
-- [ ] Application Insights telemetry
+- See `SECURITY.md` for more details.
 
 ---
 

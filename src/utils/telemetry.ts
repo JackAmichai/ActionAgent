@@ -3,7 +3,7 @@
  * Provides logging, metrics, and tracing for ActionAgent operations
  */
 
-import { config } from "../config";
+import { config } from '../config';
 
 /**
  * Metric types for tracking
@@ -11,7 +11,7 @@ import { config } from "../config";
 export interface Metric {
   name: string;
   value: number;
-  unit: "ms" | "count" | "bytes";
+  unit: 'ms' | 'count' | 'bytes';
   tags: Record<string, string>;
   timestamp: Date;
 }
@@ -49,29 +49,60 @@ class TelemetryService {
    * Structured logging
    */
   debug(message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog("debug")) {
-      console.debug(`[DEBUG] ${message}`, data ? JSON.stringify(data) : "");
+    if (this.shouldLog('debug')) {
+      console.debug(
+        JSON.stringify({
+          level: 'DEBUG',
+          timestamp: new Date().toISOString(),
+          message,
+          ...data,
+        })
+      );
     }
   }
 
   info(message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog("info")) {
-      console.info(`[INFO] ${message}`, data ? JSON.stringify(data) : "");
+    if (this.shouldLog('info')) {
+      console.info(
+        JSON.stringify({
+          level: 'INFO',
+          timestamp: new Date().toISOString(),
+          message,
+          ...data,
+        })
+      );
     }
   }
 
   warn(message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog("warn")) {
-      console.warn(`[WARN] ${message}`, data ? JSON.stringify(data) : "");
+    if (this.shouldLog('warn')) {
+      console.warn(
+        JSON.stringify({
+          level: 'WARN',
+          timestamp: new Date().toISOString(),
+          message,
+          ...data,
+        })
+      );
     }
   }
 
   error(message: string, error?: Error, data?: Record<string, unknown>): void {
-    if (this.shouldLog("error")) {
+    if (this.shouldLog('error')) {
       console.error(
-        `[ERROR] ${message}`,
-        error ? `\n${error.stack}` : "",
-        data ? JSON.stringify(data) : ""
+        JSON.stringify({
+          level: 'ERROR',
+          timestamp: new Date().toISOString(),
+          message,
+          error: error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : undefined,
+          ...data,
+        })
       );
     }
   }
@@ -82,7 +113,7 @@ class TelemetryService {
   trackMetric(
     name: string,
     value: number,
-    unit: Metric["unit"] = "count",
+    unit: Metric['unit'] = 'count',
     tags: Record<string, string> = {}
   ): void {
     if (!config.features.enableTelemetry) return;
@@ -108,17 +139,14 @@ class TelemetryService {
   /**
    * Start timing an operation
    */
-  startTimer(
-    operationName: string,
-    initialTags: Record<string, string> = {}
-  ): OperationTimer {
+  startTimer(operationName: string, initialTags: Record<string, string> = {}): OperationTimer {
     const startTime = Date.now();
     const tags = { ...initialTags };
 
     return {
       stop: () => {
         const duration = Date.now() - startTime;
-        this.trackMetric(`${operationName}.duration`, duration, "ms", tags);
+        this.trackMetric(`${operationName}.duration`, duration, 'ms', tags);
         return duration;
       },
       addTag: (key: string, value: string) => {
@@ -131,18 +159,14 @@ class TelemetryService {
    * Track a successful operation
    */
   trackSuccess(operationName: string, tags: Record<string, string> = {}): void {
-    this.trackMetric(`${operationName}.success`, 1, "count", tags);
+    this.trackMetric(`${operationName}.success`, 1, 'count', tags);
   }
 
   /**
    * Track a failed operation
    */
-  trackFailure(
-    operationName: string,
-    errorType: string,
-    tags: Record<string, string> = {}
-  ): void {
-    this.trackMetric(`${operationName}.failure`, 1, "count", {
+  trackFailure(operationName: string, errorType: string, tags: Record<string, string> = {}): void {
+    this.trackMetric(`${operationName}.failure`, 1, 'count', {
       ...tags,
       errorType,
     });
@@ -152,7 +176,7 @@ class TelemetryService {
    * Track rate limit hit
    */
   trackRateLimit(service: string): void {
-    this.trackMetric("rate_limit.hit", 1, "count", { service });
+    this.trackMetric('rate_limit.hit', 1, 'count', { service });
     this.warn(`Rate limit hit for ${service}`);
   }
 
@@ -171,8 +195,7 @@ class TelemetryService {
       }
       summary[metric.name].count++;
       summary[metric.name].total += metric.value;
-      summary[metric.name].avg =
-        summary[metric.name].total / summary[metric.name].count;
+      summary[metric.name].avg = summary[metric.name].total / summary[metric.name].count;
     }
 
     return summary;
@@ -214,7 +237,7 @@ export async function trackOperation<T>(
     timer.stop();
     telemetry.trackFailure(
       operationName,
-      error instanceof Error ? error.name : "UnknownError",
+      error instanceof Error ? error.name : 'UnknownError',
       tags
     );
     throw error;
